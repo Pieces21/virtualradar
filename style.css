@@ -1,0 +1,118 @@
+/* Header styling */
+header {
+    background-color: rgba(50, 50, 50, 0.8); /* Transparent grey */
+    padding: 10px 20px;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Logo styling */
+.logo {
+    max-height: 50px;
+}
+
+/* Navigation menu styling */
+.nav-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 20px;
+}
+
+.nav-menu ul li {
+    display: inline-block;
+}
+
+.nav-menu ul li a {
+    color: white;
+    text-decoration: none;
+    font-size: 16px;
+    padding: 8px 12px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-menu ul li a:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .nav-menu ul {
+        flex-direction: column;
+        background-color: rgba(50, 50, 50, 0.9);
+        position: absolute;
+        right: 20px;
+        top: 60px;
+        display: none;
+    }
+
+    .nav-menu ul li {
+        display: block;
+        margin: 10px 0;
+    }
+
+    .nav-menu ul li a {
+        padding: 10px;
+        font-size: 18px;
+    }
+
+    .nav-menu.active ul {
+        display: block;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-menu ul {
+        flex-direction: column;
+        background-color: rgba(50, 50, 50, 0.9);
+        position: absolute;
+        right: 20px;
+        top: 60px;
+        display: none;
+    }
+
+    .nav-menu ul li {
+        display: block;
+        margin: 10px 0;
+    }
+
+    .nav-menu ul li a {
+        padding: 10px;
+        font-size: 18px;
+    }
+
+    .nav-menu.active ul {
+        display: block;
+    }
+}
+
+/* Mobile menu button */
+.menu-toggle {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: block;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+    }
+
+    .header-content {
+        justify-content: space-between;
+    }
+}

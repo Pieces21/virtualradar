@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Flight Data Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        /* Ensure body and html take up full height */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Header and Navigation */
+        header {
+            background-color: rgba(50, 50, 50, 0.8); /* Transparent grey */
+            padding: 10px 20px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            max-height: 50px;
+        }
+
+        .nav-menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-menu ul li {
+            display: inline-block;
+        }
+
+        .nav-menu ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            padding: 8px 12px;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-menu ul li a:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .nav-menu ul {
+                flex-direction: column;
+                background-color: rgba(50, 50, 50, 0.9);
+                position: absolute;
+                right: 20px;
+                top: 60px;
+                display: none;
+            }
+
+            .nav-menu ul li {
+                display: block;
+                margin: 10px 0;
+            }
+
+            .nav-menu ul li a {
+                padding: 10px;
+                font-size: 18px;
+            }
+
+            .nav-menu.active ul {
+                display: block;
+            }
+        }
+
+        .menu-toggle {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+                color: white;
+                font-size: 24px;
+                cursor: pointer;
+            }
+
+            .header-content {
+                justify-content: space-between;
+            }
+        }
+
+        /* Map should fill the entire screen */
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 0; /* Ensure map is underneath other elements */
+        }
+
+        /* Adjustments for UI Elements over the map */
+        #filters, #search, #infoPanel, #loading {
+            z-index: 1001; /* Ensure these are above the map */
+        }
+
+        /* Loading spinner */
+        #loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            z-index: 1001;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #007bff;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Filters */
+        #filters {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+        }
+
+        /* Search */
+        #search {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+        }
+
+        /* Info Panel */
+        #infoPanel {
+            position: absolute;
+            top: 140px;
+            right: 20px;
+            width: 250px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: none;
+            z-index: 1001;
+        }
+        #infoPanel h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #007bff;
+        }
+        #infoPanel p {
+            margin: 10px 0 0;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <img src="path/to/logo.png" alt="Logo" class="logo">
+            <nav class="nav-menu">
+                <ul>
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#services">Services</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+            <div class="menu-toggle">☰</div>
+        </div>
+    </header>
+
+    <div id="map"></div>
+    <div id="filters">
+        <label for="altitude">Min Altitude:</label>
+        <input type="range" id="altitude" min="0" max="40000" step="1000" value="0" oninput="updateFilters()">
+        <span id="altitudeValue">0</span> meters
+    </div>
+    <div id="search">
+        <input type="text" id="flightSearch" placeholder="Enter Callsign or ICAO24" oninput="searchFlight()">
+    </div>
+    <div id="infoPanel">
+        <h3 id="infoTitle">Flight Info</h3>
+        <p id="infoContent"></p>
+    </div>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Loading flight data...</p>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // JavaScript for Mobile Menu Toggle
+        document.querySelector('.menu-toggle').addEventListener('click', function() {
+            document.querySelector('.nav-menu').classList.toggle('active');
+        });
+
+        console.log("JavaScript is running");
+
+        // Initialize the map centered on London, UK with zoom controls in bottom right
+        var map = L.map('map', {
+            zoomControl: false // Disable default zoom control
+        }).setView([51.5074, -0.1278], 6);
+
+        // Add custom zoom control positioned at the bottom right
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        // Set up the OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Object to store markers and paths for each plane
+        var planes = {};
+        var paths = {};
+
+        // Function to fetch the latest aircraft image by registration
+// Function to fetch the latest aircraft image by ICAO24 (hex) code
+function fetchAircraftImageByICAO24(icao24) {
+    return fetch(`https://api.planespotters.net/pub/photos/hex/${icao24}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Response:', data); // Debugging line to check the API response
+            if (data.photos && data.photos.length > 0) {
+                const photo = data.photos[0];
+                console.log('Photo Data:', photo); // Debugging line to check the photo data
+                return {
+                    src: photo.thumbnail_large.src,  // Use large thumbnail
+                    link: photo.link,  // Link to original photo on Planespotters.net
+                    photographer: photo.photographer  // Photographer's name for attribution
+                };
+            } else {
+                console.warn('No photos found for ICAO24:', icao24); // Debugging line
+                return {
+                    src: 'https://example.com/default-image.jpg',  // Fallback image
+                    link: '#',
+                    photographer: 'Unknown'
+                };
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching aircraft image:', error);
+            return {
+                src: 'https://example.com/default-image.jpg',  // Fallback image
+                link: '#',
+                photographer: 'Unknown'
+            };
+        });
+}
+
+// Function to create the popup content
+function createPopupContent(flight) {
+    const icao24 = flight.icao24 || 'N/A';
+
+    return fetchAircraftImageByICAO24(icao24).then(imageData => {
+        console.log('Popup Content Image Data:', imageData); // Debugging line to check the image data passed to the popup
+        return `
+            <div>
+                <h4>${flight.callsign || 'Unknown'}</h4>
+                <a href="${imageData.link}" target="_blank">
+                    <img src="${imageData.src}" alt="Aircraft Image" style="width: 100%; height: auto; margin-top: 10px;">
+                </a>
+                <p style="font-size: 12px; color: #555;">Photo by: ${imageData.photographer}</p>
+                <table>
+                    <tr><td>ICAO24:</td><td>${flight.icao24 || 'N/A'}</td></tr>
+                    <tr><td>Country:</td><td>${flight.country || 'N/A'}</td></tr>
+                    <tr><td>Altitude:</td><td>${flight.altitude !== null && flight.altitude !== undefined ? flight.altitude.toFixed(2) : 'N/A'} meters</td></tr>
+                    <tr><td>Velocity:</td><td>${flight.velocity !== null && flight.velocity !== undefined ? flight.velocity.toFixed(2) : 'N/A'} m/s</td></tr>
+                    <tr><td>Latitude:</td><td>${flight.latitude.toFixed(4)}</td></tr>
+                    <tr><td>Longitude:</td><td>${flight.longitude.toFixed(4)}</td></tr>
+                </table>
+            </div>
+        `;
+    });
+}
+
+        // Function to update the map with flight data
+        function updateMap(flights) {
+            flights.forEach(function(flight) {
+                if (!flight.longitude || !flight.latitude) {
+                    return;
+                }
+
+                var id = flight.icao24;
+                var flightLatLng = [flight.latitude, flight.longitude];
+                var rotation = flight.true_track || 0;
+
+                if (!planes[id]) {
+                    var marker = L.marker(flightLatLng, { icon: createPlaneIcon(rotation) }).addTo(map);
+
+                    createPopupContent(flight).then(popupContent => {
+                        marker.bindPopup(popupContent);
+                        marker.on('click', function () {
+                            updateInfoPanel(flight);
+                            marker.openPopup(); // Ensure the popup opens after fetching the image
+                        });
+                    });
+
+                    planes[id] = marker;
+                } else {
+                    planes[id].setLatLng(flightLatLng);
+                    planes[id].setIcon(createPlaneIcon(rotation));
+                }
+            });
+        }
+
+        // Function to create a rotated plane icon with smooth resizing
+        function createPlaneIcon(rotation) {
+            const zoom = map.getZoom();
+            const minSize = 16; // Minimum size of the icon
+            const maxSize = 32; // Maximum size of the icon
+            const size = minSize + (zoom - map.getMinZoom()) * (maxSize - minSize) / (map.getMaxZoom() - map.getMinZoom());
+
+            const imagePath = "{{ url_for('static', filename='images/plane.png') }}";
+            return L.divIcon({
+                html: `<img src="${imagePath}" style="transform: rotate(${rotation}deg); width: ${size}px; height: ${size}px;">`,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2],
+                className: ''
+            });
+        }
+
+        // Function to fetch flight data from the server
+        function fetchFlightData() {
+            document.getElementById('loading').style.display = 'block'; // Show loading indicator
+
+            fetch('/get_data')
+                .then(response => response.json())
+                .then(flights => {
+                    console.log("Received flight data:", flights);
+                    updateMap(flights);
+                    document.getElementById('loading').style.display = 'none'; // Hide loading indicator
+                })
+                .catch(error => {
+                    console.error('Error fetching flight data:', error);
+                    document.getElementById('loading').style.display = 'none'; // Hide loading indicator
+                    alert('Failed to fetch flight data. Please try again later.');
+                });
+        }
+
+        // Function to update the info panel with flight details
+        function updateInfoPanel(flight) {
+            document.getElementById('infoTitle').textContent = flight.callsign || 'Unknown';
+            document.getElementById('infoContent').innerHTML = `
+                <strong>ICAO24:</strong> ${flight.icao24 || 'N/A'}<br>
+                <strong>Country:</strong> ${flight.country || 'N/A'}<br>
+                <strong>Altitude:</strong> ${flight.altitude ? flight.altitude.toFixed(2) : 'N/A'} meters<br>
+                <strong>Velocity:</strong> ${flight.velocity ? flight.velocity.toFixed(2) : 'N/A'} m/s<br>
+                <strong>Latitude:</strong> ${flight.latitude.toFixed(4)}<br>
+                <strong>Longitude:</strong> ${flight.longitude.toFixed(4)}
+            `;
+            document.getElementById('infoPanel').style.display = 'block';
+        }
+
+        // Function to filter flights based on altitude
+        function updateFilters() {
+            var minAltitude = document.getElementById('altitude').value;
+            document.getElementById('altitudeValue').textContent = minAltitude;
+            fetchFlightData();  // Re-fetch the data to apply the filter
+        }
+
+        // Function to search for a flight by callsign or ICAO24
+        function searchFlight() {
+            var query = document.getElementById('flightSearch').value.toLowerCase();
+            var flight = Object.values(planes).find(marker => {
+                var popupContent = marker.getPopup().getContent().toLowerCase();
+                return popupContent.includes(query);
+            });
+
+            if (flight) {
+                map.setView(flight.getLatLng(), 10);
+                flight.openPopup();
+                updateInfoPanel(flight);
+            }
+        }
+
+        // Fetch the flight data when the page loads
+        fetchFlightData();
+
+        // Optionally, you can set an interval to refresh the data every X seconds
+        setInterval(fetchFlightData, 10000);  // Fetch new data every 10 seconds
+
+        // Update map markers when map view changes with a debounce to avoid multiple rapid calls
+        let moveEndDebounce;
+        map.on('moveend', function() {
+            clearTimeout(moveEndDebounce);
+            moveEndDebounce = setTimeout(fetchFlightData, 500);  // Adjust delay as needed
+        });
+    </script>
+</body>
+</html>
